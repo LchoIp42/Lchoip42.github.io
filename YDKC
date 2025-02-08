@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YGO 卡组解析工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+        }
+        #card-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 65%;
+        }
+        .card-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .card {
+            width: 100px;
+            height: 142px;
+            margin: 10px;
+            cursor: pointer;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            transition: transform 0.3s;
+        }
+        .card:hover {
+            transform: scale(1.1);
+        }
+        #forbidden-cards-list {
+            width: 40%;
+            margin-left: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+            border-radius: 10px;
+            overflow-y: auto;
+        }
+        #forbidden-cards-list h2 {
+            text-align: center;
+        }
+        #forbidden-cards-list pre {
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+        }
+        #modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            font-size: small
+            max-width: 500px;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        #modal-content img {
+            width: 150px;
+            height: 210px;
+        }
+        #modal-content h3 {
+            margin-top: 20px;
+        }
+        #modal-content p {
+            margin: 10px 0;
+        }
+        #close-btn {
+            padding: 10px 20px;
+            background-color: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #close-btn:hover {
+            background-color: #cc3333;
+        }
+        .input-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .left-div {
+            float: left;
+            width: 50%;
+        }
+        .right-div {
+            float: right;
+            width: 50%;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .custom-file-upload {
+            display: inline-block;
+            padding: 8px 20px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+        }
+        .custom-file-upload:hover {
+            background-color: #0056b3;
+        }
+
+        /* 响应式设计：手机端优化 */
+        @media screen and (max-width: 768px) {
+            body {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #card-container {
+                width: 90%;
+            }
+
+            .card-row {
+                grid-template-columns: repeat(5, 1fr); 
+                gap: 10px;
+            }
+
+            .card {
+                width: 100px;
+                height: 140px;
+            }
+
+            #forbidden-cards-list {
+                width: 90%;
+                margin-left: 0;
+                margin-top: 20px;
+            }
+
+            /* 弹窗调整 */
+            #modal-content {
+                max-width: 90%;
+                padding: 15px;
+            }
+
+            #modal-content img {
+                width: 150px;
+                height: 210px;
+            }
+
+            /* 调整文件选择按钮 */
+            .custom-file-upload {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .card-row {
+                grid-template-columns: auto auto auto auto; 
+            }
+
+            .card {
+                width: 62px;
+                height: 93px;
+            }
+
+            /* 弹窗调整 */
+            #modal-content img {
+                width: 120px;
+                height: 170px;
+            }
+
+            .input-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .input-group label {
+                margin-bottom: 5px;
+            }
+
+            .custom-file-upload {
+                padding: 8px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div id="forbidden-cards-list">
+    <label for="ydk-file" class="custom-file-upload">选择YDK文件</label>
+    <input type="file" id="ydk-file" accept=".ydk" onchange="handleYdkFile(event)">
+    <label for="txt-file" class="custom-file-upload">选择比赛卡表文件</label>
+    <input type="file" id="txt-file" accept=".txt" onchange="handleTxtFile(event)">
+    <h3>不在比赛卡表中的卡片</h3>
+    <div id="forbidden-cards"></div>
+</div>
+
+
+<div id="card-container">
+    <h2>卡组展示</h2>
+    <h3>主卡组</h3>
+    <div id="main-cards" class="card-row"></div>
+    <h3>额外卡组</h3>
+    <div id="extra-cards" class="card-row"></div>
+    <h3>副卡组</h3>
+    <div id="side-cards" class="card-row"></div>
+</div>
+
+<div id="modal">
+    <div id="modal-content">
+        <div class="right-div" align="right"><button id="close-btn" onclick="closeModal()">关闭</button></div>
+        <img id="modal-card-image" src="" alt="卡牌图">
+        <h3 id="modal-card-name"></h3>
+        <div style="width:70vw"><p><strong>卡牌类型:</strong> <span id="modal-card-type"></span></p></div>
+        <div style="width:70vw"><p><strong>卡牌效果:</strong> <span id="modal-card-desc"></span></p></div>
+    </div>
+</div>
+
+<script>
+    let ydkCards = {
+        main: [],
+        extra: [],
+        side: []
+    };
+    let allowedCards = [];
+    let forbiddenCards = [];
+    let cardsPerRow = 10;  // 默认每行显示10张卡片
+
+    // 解析YDK文件
+    function handleYdkFile(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const ydkContent = e.target.result;
+                parseYdkFile(ydkContent);
+            };
+            reader.readAsText(file);
+        }
+    }
+
+    function parseYdkFile(content) {
+        const lines = content.split('\n');
+        let currentSection = '';
+        let mainCards = [];
+        let extraCards = [];
+        let sideCards = [];
+
+        lines.forEach(line => {
+            if (line.startsWith('#main')) {
+                currentSection = 'main';
+            } else if (line.startsWith('#extra')) {
+                curr
